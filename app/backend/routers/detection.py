@@ -21,11 +21,33 @@ async def detect_transport_coordinates(
     try:
         image = read_image(await file.read())
         results = model_manager.detect(image)
-        detections = results.pandas().xyxy[0].to_dict(orient="records")
+
+        if hasattr(results, "pandas"):
+            detections = results.pandas().xyxy[0].to_dict(orient="records")
+        else:
+            detections = []
+            for box in results[0].boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                confidence = float(box.conf[0])
+                class_id = int(box.cls[0])
+                label = results[0].names[class_id] if hasattr(results[0], "names") else str(class_id)
+
+                detections.append({
+                    "xmin": x1,
+                    "ymin": y1,
+                    "xmax": x2,
+                    "ymax": y2,
+                    "confidence": confidence,
+                    "class": class_id,
+                    "name": label
+                })
         return [DetectionResult(**detection) for detection in detections]
     except Exception as e:
         logger.error(f"Error in detect_transport_coordinates: {e}")
-        raise HTTPException(status_code=500, detail="Detection failed") from e
+        raise HTTPException(
+            status_code=500,
+            detail="Detection failed"
+        ) from e
 
 
 @router.post("/image")
@@ -38,7 +60,26 @@ async def detect_transport_image(
     try:
         image = read_image(await file.read())
         results = model_manager.detect(image)
-        detections = results.pandas().xyxy[0].to_dict(orient="records")
+
+        if hasattr(results, "pandas"):
+            detections = results.pandas().xyxy[0].to_dict(orient="records")
+        else:
+            detections = []
+            for box in results[0].boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                confidence = float(box.conf[0])
+                class_id = int(box.cls[0])
+                label = results[0].names[class_id] if hasattr(results[0], "names") else str(class_id)
+
+                detections.append({
+                    "xmin": x1,
+                    "ymin": y1,
+                    "xmax": x2,
+                    "ymax": y2,
+                    "confidence": confidence,
+                    "class": class_id,
+                    "name": label
+                })
 
         for detection in detections:
             x1, y1, x2, y2 = (
@@ -47,14 +88,20 @@ async def detect_transport_image(
             )
             label = detection['name']
             confidence = detection['confidence']
-            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 3)
             cv2.putText(
                 image, f"{label} {confidence:.2f}", (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
             )
 
         _, img_encoded = cv2.imencode('.jpg', image)
-        return StreamingResponse(io.BytesIO(img_encoded.tobytes()), media_type="image/jpeg")
+        return StreamingResponse(
+            io.BytesIO(img_encoded.tobytes()),
+            media_type="image/jpeg"
+        )
     except Exception as e:
         logger.error(f"Error in detect_transport_image: {e}")
-        raise HTTPException(status_code=500, detail="Image processing failed") from e
+        raise HTTPException(
+            status_code=500,
+            detail="Image processing failed"
+        ) from e
