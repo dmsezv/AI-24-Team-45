@@ -59,6 +59,10 @@ detect_image_page = st.Page(
     "pages/detect_image_page.py", title="Detect Image", icon="🚗", default=True
 )
 
+tracking_object_page = st.Page(
+    "pages/tracking_object_page.py", title="Tracking Object", icon="🎥"
+)
+
 get_coordinates_page = st.Page(
     "pages/get_coordinates_page.py", title="Get Coordinates", icon="📐"
 )
@@ -78,7 +82,7 @@ fit_model_page = st.Page(
 pg = st.navigation(
     {
         "Analyze": [eda_page, training_progress_page],
-        "Inference": [detect_image_page, get_coordinates_page],
+        "Inference": [detect_image_page, tracking_object_page, get_coordinates_page],
         "Upgrade Model": [fit_model_page],
     }
 )
