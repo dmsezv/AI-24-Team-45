@@ -9,3 +9,4 @@ flake8
 pylint
 python-multipart
 python-dotenv
+ffmpeg-python

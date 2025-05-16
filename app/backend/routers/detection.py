@@ -60,7 +60,7 @@ async def detect_transport_image(
     try:
         image = read_image(await file.read())
         results = model_manager.detect(image)
-
+        print(f"QWERTY: {results}")
         if hasattr(results, "pandas"):
             detections = results.pandas().xyxy[0].to_dict(orient="records")
         else:
