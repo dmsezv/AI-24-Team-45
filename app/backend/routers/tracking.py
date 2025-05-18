@@ -1,6 +1,6 @@
 import cv2, asyncio, time, subprocess, threading, numpy as np
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse, JSONResponse
 from loguru import logger
 from app_utils.model_manager import ModelManager
@@ -14,15 +14,17 @@ class FFmpegReader:
     def __init__(self, src: str, w: int, h: int, fps: int):
         self.cmd = [
             "ffmpeg",
+            "-re",
             "-hwaccel", "videotoolbox",
             "-fflags", "nobuffer",
             "-flags", "low_delay",
             "-i", src,
             "-vf", f"scale={w}:{h},fps={fps}",
             "-f", "mjpeg",
-            "-q:v", "7",
+            "-q:v", "1",
             "pipe:1"
         ]
+
         self.buf, self.proc, self.running = bytearray(), None, False
         self.frm_lock, self.frame = threading.Lock(), None
 
@@ -36,9 +38,11 @@ class FFmpegReader:
             self.running = True
             threading.Thread(target=self._loop, daemon=True).start()
             logger.info("FFmpeg start OK")
+
             return True
         except Exception as e:
             logger.error(f"FFmpeg error: {e}")
+
             return False
 
     def _loop(self):
@@ -88,15 +92,21 @@ def stop_stream():
 
 @router.get("/video-feed")
 async def video_feed(
-    url: str, width: int = 640, height: int = 480, fps: int = 15,
-    confidence: float = 0.5, classes: Optional[str] = None,
+    url: str,
+    width: int = 640,
+    height: int = 480,
+    fps: int = 7,
+    confidence: float = 0.5,
+    classes: Optional[str] = None,
     model: ModelManager = Depends()
 ):
     stop_stream()
     allowed = [c.strip() for c in classes.split(",")] if classes else None
     reader = FFmpegReader(url, width, height, fps)
+
     if not reader.start():
         raise RuntimeError("FFmpeg start failed")
+
     global current
     with lock:
         current = reader
@@ -107,13 +117,16 @@ async def video_feed(
             while reader.running:
                 t0 = time.perf_counter()
                 frame = reader.get()
+
                 if frame is None:
                     await asyncio.sleep(0.005)
                     continue
+
                 det = await asyncio.to_thread(model.detect, frame)
                 draw(frame, det, confidence, allowed)
                 _, enc = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
                 yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + enc.tobytes() + b"\r\n"
+                
                 dt = time.perf_counter() - t0
                 if dt < period:
                     await asyncio.sleep(period - dt)
