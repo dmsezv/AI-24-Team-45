@@ -96,7 +96,7 @@ async def video_feed(
     width: int = 640,
     height: int = 480,
     fps: int = 7,
-    confidence: float = 0.5,
+    # confidence: float = 0.5,
     classes: Optional[str] = None,
     model: ModelManager = Depends()
 ):
@@ -122,11 +122,11 @@ async def video_feed(
                     await asyncio.sleep(0.005)
                     continue
 
-                det = await asyncio.to_thread(model.detect, frame)
-                draw(frame, det, confidence, allowed)
-                _, enc = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+                det = await asyncio.to_thread(model.track, frame)
+                draw(frame, det, allowed)
+                _, enc = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
                 yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + enc.tobytes() + b"\r\n"
-                
+
                 dt = time.perf_counter() - t0
                 if dt < period:
                     await asyncio.sleep(period - dt)
@@ -136,29 +136,38 @@ async def video_feed(
     return StreamingResponse(stream(), media_type="multipart/x-mixed-replace; boundary=frame")
 
 
-def draw(img, res, thr, allowed):
+def draw(img, res, allowed):
     if hasattr(res, "pandas"):
         for d in res.pandas().xyxy[0].to_dict("records"):
-            if d["confidence"] < thr:
-                continue
             label = d.get("name", str(d.get("class", "")))
             if allowed and label not in allowed:
                 continue
             x1, y1, x2, y2 = map(int, (d["xmin"], d["ymin"], d["xmax"], d["ymax"]))
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(img, f"{label} {d['confidence']:.2f}", (x1, y1 - 6),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
     else:
-        for b in res[0].boxes:
-            if float(b.conf[0]) < thr:
+        r = res[0]
+        boxes, names = r.boxes, r.names
+
+        track_ids = boxes.id if boxes.id is not None else [None] * len(boxes)
+
+        for xyxy, conf, cls_id, track_id in zip(
+                boxes.xyxy, boxes.conf, boxes.cls, track_ids):
+
+            label = names.get(int(cls_id), str(int(cls_id)))
+            if allowed and label not in allowed:
                 continue
-            lbl = res[0].names.get(int(b.cls[0]), str(int(b.cls[0])))
-            if allowed and lbl not in allowed:
-                continue
-            x1, y1, x2, y2 = map(int, b.xyxy[0])
+
+            x1, y1, x2, y2 = map(int, xyxy)
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(img, f"{lbl} {b.conf[0]:.2f}", (x1, y1 - 6),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+
+            txt = f"{label} {conf:.2f}"
+            if track_id is not None:
+                txt += f" id:{int(track_id)}"
+
+            cv2.putText(img, txt, (x1, y1-6),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2)
 
 
 @router.get("/stop")

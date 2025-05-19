@@ -42,6 +42,14 @@ class ModelManager:
         """Run detection on the provided image."""
         return self.model.detect(image)
 
+    def track(self, image):
+        """Detection + tracking (if model supports)."""
+        # return self.model.track(image)
+        try:
+            return self.model.track(image)
+        except (AttributeError, NotImplementedError):
+            return self.model.detect(image)
+
     def get_available_models(self):
         """Return a list of available model names."""
         model_names = list(self.models.keys())

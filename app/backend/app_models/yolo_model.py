@@ -36,6 +36,23 @@ class YOLOModel:
         results = self.model(image)
         return results
 
+    def track(self, image):
+        """
+        Detection + tracking. For v12 we use the built-in .track().
+        For v5 currently NotImplemented (need external tracker).
+        """
+        if self.version == "v12":
+            return self.model.track(
+                image,
+                persist=True,
+                verbose=False
+            )
+        else:
+            raise NotImplementedError(
+                "YOLOv5 does not support built-in tracking; "
+                "connect SORT/ByteTrack separately."
+            )
+
     def get_model_info(self):
         """Return information about the model."""
         return {

@@ -18,7 +18,8 @@ class_list = [
     "bus",
     "truck",
     "motorcycle",
-    "bicycle"
+    "bicycle",
+    "train"
 ]
 
 
@@ -26,7 +27,7 @@ if not st.session_state.running:
     with st.expander("⚙ Settings", expanded=True):
         sel = st.multiselect("Classes to track", class_list, ["car", "bus"])
         fps = st.slider("FPS", 5, 30, 10)
-        conf = st.slider("Confidence", 0.1, 1.0, 0.15)
+        # conf = st.slider("Confidence", 0.1, 1.0, 0.15)
         # st.select_slider("Ширина",  [320, 480, 640, 800, 1024], 640)
         # st.select_slider("Высота",   [240, 360, 480, 600, 720],  480)
 
@@ -46,19 +47,18 @@ else:
     <div style="background-color: rgb(38, 39, 48); padding: 10px; border-radius: 5px;">
         <b>Current parameters:</b><br/>
         FPS: {}<br/>
-        Confidence: {}<br/>
         Classes tracking: {}
     </div>
     """.format(
         st.session_state.get('fps', 10),
-        st.session_state.get('conf', 0.15),
+        #st.session_state.get('conf', 0.15),
         ', '.join(st.session_state.get('sel', ['car', 'bus']))
     ), unsafe_allow_html=True)
 
 if not st.session_state.running:
     st.session_state.sel = sel
     st.session_state.fps = fps
-    st.session_state.conf = conf
+    #st.session_state.conf = conf
 
 if st.session_state.running:
     width = 640
@@ -70,7 +70,8 @@ if st.session_state.running:
         f"{API_BASE_URL}/stream/video-feed"
         f"?url={quote(CAM_URL)}"
         f"&width={width}&height={height}&fps={st.session_state.fps}"
-        f"&confidence={st.session_state.conf}&classes={classes}&_t={st.session_state.ts}"
+        # f"&confidence={st.session_state.conf}&classes={classes}&_t={st.session_state.ts}"
+        f"&classes={classes}&_t={st.session_state.ts}"
     )
     st.markdown("### 🎬 Video on live camera Slavija")
     st.markdown(
