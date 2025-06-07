@@ -4,7 +4,7 @@ import cv2
 from loguru import logger
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
 from fastapi.responses import StreamingResponse
-from app_utils.image_processing import read_image
+from app_utils.image_processing import read_image, get_class_color
 from app_utils.model_manager import ModelManager
 from app_models.detection_result import DetectionResult
 
@@ -105,28 +105,3 @@ async def detect_transport_image(
             status_code=500,
             detail="Image processing failed"
         ) from e
-
-
-def get_class_color(class_name):
-    colors = {
-        'car': (0, 255, 0),          # Зеленый
-        'bus': (255, 0, 0),          # Синий
-        'truck': (0, 165, 255),      # Оранжевый
-        'motorcycle': (255, 0, 255), # Пурпурный
-        'bicycle': (0, 255, 255),    # Желтый
-        'train': (128, 0, 128),      # Фиолетовый
-        'ambulance': (0, 0, 255),    # Красный
-        'person': (255, 255, 0),     # Голубой
-    }
-
-    if class_name not in colors:
-        import random
-        random.seed(hash(class_name))
-
-        r = random.randint(100, 255)
-        g = random.randint(100, 255) 
-        b = random.randint(100, 255)
-
-        return (b, g, r)
-
-    return colors[class_name]
