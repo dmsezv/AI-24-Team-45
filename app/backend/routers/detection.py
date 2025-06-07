@@ -60,7 +60,6 @@ async def detect_transport_image(
     try:
         image = read_image(await file.read())
         results = model_manager.detect(image)
-        print(f"QWERTY: {results}")
         if hasattr(results, "pandas"):
             detections = results.pandas().xyxy[0].to_dict(orient="records")
         else:
@@ -88,10 +87,11 @@ async def detect_transport_image(
             )
             label = detection['name']
             confidence = detection['confidence']
-            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 3)
+            color = get_class_color(label)
+            cv2.rectangle(image, (x1, y1), (x2, y2), color, 3)
             cv2.putText(
                 image, f"{label} {confidence:.2f}", (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+                cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2
             )
 
         _, img_encoded = cv2.imencode('.jpg', image)
@@ -105,3 +105,28 @@ async def detect_transport_image(
             status_code=500,
             detail="Image processing failed"
         ) from e
+
+
+def get_class_color(class_name):
+    colors = {
+        'car': (0, 255, 0),          # Зеленый
+        'bus': (255, 0, 0),          # Синий
+        'truck': (0, 165, 255),      # Оранжевый
+        'motorcycle': (255, 0, 255), # Пурпурный
+        'bicycle': (0, 255, 255),    # Желтый
+        'train': (128, 0, 128),      # Фиолетовый
+        'ambulance': (0, 0, 255),    # Красный
+        'person': (255, 255, 0),     # Голубой
+    }
+
+    if class_name not in colors:
+        import random
+        random.seed(hash(class_name))
+
+        r = random.randint(100, 255)
+        g = random.randint(100, 255) 
+        b = random.randint(100, 255)
+
+        return (b, g, r)
+
+    return colors[class_name]
